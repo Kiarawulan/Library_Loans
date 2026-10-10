@@ -23,9 +23,7 @@ function validateLoan(body = {}, partial = false) {
   if (body.status !== undefined && !allowedStatuses.includes(body.status)) return 'status harus salah satu dari: ' + allowedStatuses.join(', ') + '.';
   if (partial && !fields.some((key) => Object.hasOwn(body, key))) return 'Minimal satu field peminjaman harus dikirim.';
   return null;
-}
-
-app.get('/', (req, res) => res.json({ name: 'Library Loans API', version: '1.0.0', endpoints: ['GET /loans', 'GET /loans/:id', 'POST /loans', 'PUT /loans/:id', 'DELETE /loans/:id'] }));
+}app.get('/', (req, res) => res.json({ name: 'Library Loans API', version: '1.0.0', endpoints: ['GET /health', 'GET /loans', 'GET /loans?status=Terlambat', 'GET /loans?member_name=Kiara', 'GET /loans/:id', 'POST /loans', 'PUT /loans/:id', 'PATCH /loans/:id', 'DELETE /loans/:id'] }));
 app.get('/health', (req, res) => res.json({ ok: true, databaseConfigured: Boolean(supabase) }));
 app.get('/loans', requireDatabase, async (req, res) => {
   let query = supabase.from('loans').select('*').order('created_at', { ascending: false });
