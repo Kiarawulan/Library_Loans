@@ -6,8 +6,7 @@ const app = express();
 app.use(express.json());
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY) : null;
-const allowedStatuses = ['Dipinjam', 'Dikembalikan', 'Terlambat'];
-const fields = ['member_name', 'book_title', 'loan_date', 'due_date', 'return_date', 'status'];
+const allowedStatuses = ['Dipinjam', 'Dikembalikan', 'Terlambat'];const fields = ['member_name', 'book_title', 'borrow_date', 'due_date', 'status'];
 
 function requireDatabase(req, res, next) {
   if (!supabase) return res.status(503).json({ error: 'Database belum dikonfigurasi. Isi SUPABASE_URL dan SUPABASE_ANON_KEY.' });
@@ -19,9 +18,9 @@ function validateLoan(body = {}, partial = false) {
     if (typeof body[key] !== 'string' || !body[key].trim()) return key + ' wajib diisi sebagai teks.';
   }
   for (const key of ['member_name', 'book_title']) if (body[key] !== undefined && (typeof body[key] !== 'string' || !body[key].trim())) return key + ' harus berupa teks yang tidak kosong.';
-  for (const key of ['loan_date', 'due_date', 'return_date']) if (body[key] !== undefined && body[key] !== null && (typeof body[key] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body[key]))) return key + ' harus memakai format YYYY-MM-DD.';
+  for (const key of ['borrow_date', 'loan_date', 'due_date']) if (body[key] !== undefined && body[key] !== null && (typeof body[key] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body[key]))) return key + ' harus memakai format YYYY-MM-DD.';
   if (body.status !== undefined && !allowedStatuses.includes(body.status)) return 'status harus salah satu dari: ' + allowedStatuses.join(', ') + '.';
-  if (partial && !fields.some((key) => Object.hasOwn(body, key))) return 'Minimal satu field peminjaman harus dikirim.';
+  if (partial && ![...fields, 'loan_date'].some((key) => Object.hasOwn(body, key))) return 'Minimal satu field peminjaman harus dikirim.';
   return null;
 }app.get('/', (req, res) => res.json({ name: 'Library Loans API', version: '1.0.0', endpoints: ['GET /health', 'GET /loans', 'GET /loans?status=Terlambat', 'GET /loans?member_name=Kiara', 'GET /loans/:id', 'POST /loans', 'PUT /loans/:id', 'PATCH /loans/:id', 'DELETE /loans/:id'] }));
 app.get('/health', (req, res) => res.json({ ok: true, databaseConfigured: Boolean(supabase) }));
@@ -46,6 +45,7 @@ app.post('/loans', requireDatabase, async (req, res) => {
   const invalid = validateLoan(req.body);
   if (invalid) return res.status(400).json({ error: invalid });
   const payload = Object.fromEntries(fields.filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]]));
+  payload.borrow_date = payload.borrow_date || req.body.loan_date || new Date().toISOString().slice(0, 10);
   const { data, error } = await supabase.from('loans').insert(payload).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json({ data });
@@ -54,7 +54,7 @@ async function updateLoan(req, res) {
   const invalid = validateLoan(req.body, true);
   if (invalid) return res.status(400).json({ error: invalid });
   const payload = Object.fromEntries(fields.filter((key) => req.body[key] !== undefined).map((key) => [key, req.body[key]]));
-  payload.updated_at = new Date().toISOString();
+  if (req.body.loan_date !== undefined && req.body.borrow_date === undefined) payload.borrow_date = req.body.loan_date;
   const { data, error } = await supabase.from('loans').update(payload).eq('id', req.params.id).select().maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
   if (!data) return res.status(404).json({ error: 'Data peminjaman tidak ditemukan.' });
