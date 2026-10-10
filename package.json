@@ -1,0 +1,9 @@
+{
+  "name": "library-loans-api",
+  "version": "1.0.0",
+  "description": "REST API pencatatan peminjaman buku dengan Express dan Supabase",
+  "main": "api/index.js",
+  "scripts": { "start": "node api/index.js", "dev": "node --watch api/index.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "@supabase/supabase-js": "^2.57.0", "dotenv": "^16.4.7", "express": "^4.21.2" }
+}
